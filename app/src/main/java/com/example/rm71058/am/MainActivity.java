@@ -52,10 +52,7 @@ public class MainActivity extends AppCompatActivity {
         protected String doInBackground(String... params) {
             HttpURLConnection connection = null;
             try {
-                Log.i("MainActivity", "LastCode: " + lastCode);
-                Log.i("MainActivity", "countSearch: " + countSearch);
                 if(lastCode == 0 || countSearch > 10) {
-                    Log.i("MainActivity", "Acessou o serviço");
                     URL url = new URL("http://ws.qoala.com.br/ITIssues/itflix");
                     connection = (HttpURLConnection) url.openConnection();
 
@@ -73,9 +70,7 @@ public class MainActivity extends AppCompatActivity {
                             response.append(line);
                         }
 
-                        SharedPreferences.Editor e = sp.edit();
-                        e.putInt("count_search", 1);
-                        e.commit();
+                        incrementCountSearch();
 
                         return response.toString();
                     }
@@ -105,30 +100,30 @@ public class MainActivity extends AppCompatActivity {
                         int code = (int) video.getLong("codigo");
                         int time = (int) video.getLong("tempo");
                         String description = video.getString("descricao");
-                        Log.i("MainActivity", "CountSearch" + countSearch);
-                        Log.i("MainActivity", "code" + code);
                         if(code > lastCode)
                             dao.insert(code, time, description);
                         videos.add(new Video(code, time, description));
                     }
 
-                    ListAdapter adapter = new ArrayAdapter<Video>(MainActivity.this, android.R.layout.simple_list_item_1, videos);
-                    videosListView.setAdapter(adapter);
+                    setListAdapter(videos);
 
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
             } else {
-                Log.i("MainActivity", "Acessou o banco direto");
-                SharedPreferences.Editor e = sp.edit();
-                e.putInt("count_search", countSearch + 1);
-                e.commit();
-
-                List<Video> videos = dao.all();
-
-                ListAdapter adapter = new ArrayAdapter<Video>(MainActivity.this, android.R.layout.simple_list_item_1, videos);
-                videosListView.setAdapter(adapter);
+                incrementCountSearch();
+                setListAdapter(dao.all());
             }
+        }
+        private void incrementCountSearch() {
+            SharedPreferences.Editor e = sp.edit();
+            e.putInt("count_search", (countSearch > 10) ? 1 : countSearch + 1);
+            e.commit();
+        }
+
+        private void setListAdapter(List<Video> videos) {
+            ListAdapter adapter = new ArrayAdapter<>(MainActivity.this, android.R.layout.simple_list_item_1, videos);
+            videosListView.setAdapter(adapter);
         }
 
         @Override

@@ -1,9 +1,11 @@
 package com.example.rm71058.am;
 
 import android.app.ProgressDialog;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListAdapter;
@@ -42,38 +44,49 @@ public class MainActivity extends AppCompatActivity {
     private class SearchTask extends AsyncTask<String, Void, String> {
 
         private ProgressDialog progressDialog;
+        SharedPreferences sp = getPreferences(MODE_PRIVATE);
+        int countSearch = sp.getInt("count_search", 0);
+        int lastCode = dao.lastCode();
 
         @Override
         protected String doInBackground(String... params) {
             HttpURLConnection connection = null;
             try {
-                VideoDAO dao = new VideoDAO(MainActivity.this);
+                Log.i("MainActivity", "LastCode: " + lastCode);
+                Log.i("MainActivity", "countSearch: " + countSearch);
+                if(lastCode == 0 || countSearch > 10) {
+                    Log.i("MainActivity", "Acessou o serviço");
+                    URL url = new URL("http://ws.qoala.com.br/ITIssues/itflix");
+                    connection = (HttpURLConnection) url.openConnection();
 
-                URL url = new URL("http://ws.qoala.com.br/ITIssues/itflix");
-                connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setRequestProperty("context-type", "text/json");
 
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("context-type", "text/json");
+                    if(connection.getResponseCode() == 200) {
+                        BufferedReader stream = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream())
+                        );
 
-                if(connection.getResponseCode() == 200) {
-                    BufferedReader stream = new BufferedReader(
-                            new InputStreamReader(connection.getInputStream())
-                    );
+                        String line = "";
+                        StringBuilder response = new StringBuilder();
+                        while((line = stream.readLine()) != null) {
+                            response.append(line);
+                        }
 
-                    String line = "";
-                    StringBuilder response = new StringBuilder();
-                    while((line = stream.readLine()) != null) {
-                        response.append(line);
+                        SharedPreferences.Editor e = sp.edit();
+                        e.putInt("count_search", 1);
+                        e.commit();
+
+                        return response.toString();
                     }
-
-                    return response.toString();
                 }
             } catch (MalformedURLException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                connection.disconnect();
+                if(connection != null)
+                    connection.disconnect();
             }
             return null;
         }
@@ -85,14 +98,17 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     JSONArray jsonArray = new JSONArray(s);
 
-                    List<Video> videos = new ArrayList<Video>();
+                    List<Video> videos = new ArrayList<>();
 
                     for(int i = 0; i < jsonArray.length(); i++){
                         JSONObject video = jsonArray.getJSONObject(i);
                         int code = (int) video.getLong("codigo");
                         int time = (int) video.getLong("tempo");
                         String description = video.getString("descricao");
-                        dao.insert(code, time, description);
+                        Log.i("MainActivity", "CountSearch" + countSearch);
+                        Log.i("MainActivity", "code" + code);
+                        if(code > lastCode)
+                            dao.insert(code, time, description);
                         videos.add(new Video(code, time, description));
                     }
 
@@ -102,6 +118,16 @@ public class MainActivity extends AppCompatActivity {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+            } else {
+                Log.i("MainActivity", "Acessou o banco direto");
+                SharedPreferences.Editor e = sp.edit();
+                e.putInt("count_search", countSearch + 1);
+                e.commit();
+
+                List<Video> videos = dao.all();
+
+                ListAdapter adapter = new ArrayAdapter<Video>(MainActivity.this, android.R.layout.simple_list_item_1, videos);
+                videosListView.setAdapter(adapter);
             }
         }
 

@@ -50,6 +50,7 @@ public class VideoDAO {
         );
 
         try {
+            cursor.moveToNext();
             do {
                 Video video = new Video(cursor.getInt(0), cursor.getInt(1), cursor.getString(2));
                 videos.add(video);
@@ -63,21 +64,24 @@ public class VideoDAO {
     }
 
 
-    public boolean existRecord() {
+    public int lastCode() {
         Cursor cursor = this.db.query(
                 TABLE_NAME,
+                new String[]{"codigo"},
                 null,
                 null,
                 null,
                 null,
-                null,
-                null,
+                "codigo desc",
                 "1"
         );
 
         try {
-            return cursor.moveToNext();
-        } finally {
+            cursor.moveToNext();
+            return cursor.getInt(0);
+        } catch (Exception e) {
+            return 0;
+        }finally {
             if(cursor != null && !cursor.isClosed())
                 cursor.close();
         }
@@ -93,7 +97,7 @@ public class VideoDAO {
 
         @Override
         public void onCreate(SQLiteDatabase db) {
-            db.execSQL("CREATE TABLE " + TABLE_NAME + " (codigo integer PRIMAY KEY, tempo integer, descricao TEXT ");
+            db.execSQL("CREATE TABLE " + TABLE_NAME + " (codigo integer PRIMAY KEY, tempo integer, descricao TEXT)");
         }
 
         @Override

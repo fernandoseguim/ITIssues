@@ -87,9 +87,6 @@ public class VideoDAO {
         }
     }
 
-    public void closeConnection() {
-        this.db.close();
-    }
     private static class OpenHelper extends SQLiteOpenHelper {
         OpenHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
